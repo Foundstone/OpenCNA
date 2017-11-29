@@ -1,37 +1,23 @@
-# OPENCNA
+# OpenCNA
 
-This is a VERY FIRST trial to make the OPENCNA (Collection, Normalization and Analysis) happen. It contains just an example of a way how we can run an analytic with a csv files interface, and 'really easy' to deploy.
+OpenCNA (Collection, Normalization and Analysis) tool, to collect data from endpoints (actually, we use [rastrea2r](https://github.com/aboutsecurity/rastrea2r) to do that), normalize (parse) that data and analyze it.
 
 
-## Requeriments
+## Requirements
 
 In order to make it easy to deploy, we rely on docker:
 * Install and start Docker CE (https://www.docker.com/community-edition)
 
 
-## TODOs (next steps)
-
-These are the inputs we would like to process in a near future:
-* Random paths -> autorun
-* Webhistory
-* MFT
-
-We would like to have a way of visualizing the results with:
-* Temporal lines?
-* How to represent entropy, uncommon things?
-
-We must perform Collection + Normalization. In that sense, we need to convert rastrea2r output to csv
-
-
 ## Deployment
 
-The deployment is done through docker images. To create the first one, run:
+Currently, the docker images are NOT in the docker hub. You have to deploy them first:
 
 ```bash
-build -t random-folder random-folder/
+sh build.sh
 ```
 
-That will create a docker image called "random-folder". You can see it listed, by running:
+That will create the opencna command line tool and a set of docker images. You can see them, by running:
 
 ```bash
 docker images
@@ -40,18 +26,31 @@ docker images
 
 ## Running
 
-The docker instances created are expecting a csv file being passed through stdin and the output is stdout. Therefore, we can use pipes '|' to process files. For example, you may add a column of 'random path' to a csv file listing processes:
+Currently, there are two commands for opencna:
 
-```bash
-cat random-folder/resources/example.csv | docker run --rm -i random-paths -c fpath -o "is random path" | cat
-```
+* normalize: parses the data in the snapshots and create csv files as output.
+    Example:
+    ```bash
+    opencna normalize -i data/collector/ -o data/normalizer/
+    ```
+    The snapshots in data/collector/ will be parsed and the result stored in data/normalizer/. **The folders in -i and -o will be loaded as volumes in docker. Make sure these folders can be volumes.**
 
-For that example, we are running the image random-paths 'interactively' (-i argument). After running it, we remove it (--rm argument). And we pass the following arguments to the analytic in the docker:
-* -c: csv column name to process
-* -o: csv column name generated
 
-You can run the docker with the -h option to get usage help:
+* analyze: in this case, the functions work with piping. They read from stdin and write to stdout.
+    Examples:
+    * web-history:
+        ```bash
+        cat data/normalizer/webhistory-WIN81/20171126083616/20171126083616-WIN81-webhist-demouser1.csv | opencna analyze web-history -c URL -o naked_IP
+        ```
+    * random-process-name:
+        ```bash
+        cat data/normalizer/triage-WIN81/20171126084231-WIN81-process-list.csv | opencna analyze random-process-name -c Name -o is_random_name
+        ```
+    * process-uncommon-nsrl:
+        ```bash
+        cat data/normalizer/triage-WIN81/20171126084231-WIN81-process-list.csv | opencna analyze process-uncommon-nsrl -c Name -o is_uncommon
+        ```
 
-```bash
-docker run --rm -i random-paths -h
-```
+    In general, for analyzers, the following arguments must be passed:
+    * -c: csv column name(s) to process
+    * -o: csv column name(s) generated
